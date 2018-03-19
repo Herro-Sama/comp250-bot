@@ -13,10 +13,6 @@ import rts.units.UnitTypeTable;
 
 /*
  * 
- * This is a bot made to win. 
- * 
- * 
- * 
  */
 
 
