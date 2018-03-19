@@ -13,7 +13,7 @@ import rts.units.UnitTypeTable;
 
 /**
  *
- * @author santi
+ * @author santi.
  */
 public class RandomAI extends AI {    
     public RandomAI(UnitTypeTable utt) {
