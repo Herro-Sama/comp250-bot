@@ -11,16 +11,21 @@ import java.util.List;
 import rts.*;
 import rts.units.UnitTypeTable;
 
-/**
- *
- * @author santi.
+/*
+ * 
+ * This is a bot made to win. 
+ * 
+ * 
+ * 
  */
-public class RandomAI extends AI {    
-    public RandomAI(UnitTypeTable utt) {
+
+
+public class MirageAI extends AI {    
+    public MirageAI(UnitTypeTable utt) {
     }
     
 
-    public RandomAI() {
+    public MirageAI() {
     }
     
     
@@ -31,7 +36,7 @@ public class RandomAI extends AI {
     
     @Override
     public AI clone() {
-        return new RandomAI();
+        return new MirageAI();
     }
    
     
