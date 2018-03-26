@@ -35,9 +35,8 @@ public class GameVisualSimulationTest {
         int PERIOD = 20;
         boolean gameover = false;
         
-        //AI ai1 = new WorkerRush(utt, new BFSPathFinding());
+        AI ai2 = new WorkerRush(utt, new BFSPathFinding());
         AI ai1 = new MirageAI(utt);
-        AI ai2 = new MirageAI();
 
         JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_BLACK);
 //        JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_WHITE);
