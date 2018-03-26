@@ -4,8 +4,7 @@
  */
 package bot;
 
-import ai.abstraction.WorkerRush;
-import ai.abstraction.pathfinding.AStarPathFinding;
+import ai.evaluation.EvaluationFunctionForwarding;
 import ai.core.AI;
 import ai.core.ParameterSpecification;
 import ai.evaluation.EvaluationFunction;
@@ -17,64 +16,57 @@ import rts.GameState;
 import rts.PlayerAction;
 import rts.PlayerActionGenerator;
 import rts.units.UnitTypeTable;
+import util.Pair;
 
 /**
  *
- * @author santi:
+ * @author santi
  * 
- * This is going to be modified once I understand what it does?, hopefully it's not terrible and I'm smart enough to understand any of it's functionality.
- *
+ * Attempting the RTMinimax bot to see if this one results in DQ.
  */
-
 public class MirageAI extends AI {
-    public static int DEBUG = 0;
-    
     // reset at each execution of minimax:
-    int nLeaves = 0;
-    int nNodes = 0;
+    static int minCT = -1;
+    static int maxCT = -1;
+    static int nLeaves = 0;
     
-    int max_depth_so_far = 0;
-    long max_branching_so_far = 0;
-    long max_leaves_so_far = 0;
-    long max_nodes_so_far = 0;
+    public long max_branching_so_far = 0;
+    public long max_leaves_so_far = 0;
     
-    int MAXDEPTH = 4;
-    AI playoutAI = null;
-    int maxPlayoutTime = 100;
-    EvaluationFunction ef = null;
+    int LOOKAHEAD = 40;
+
     protected int defaultNONEduration = 8;
+    
+    EvaluationFunction ef = null;
     
     
     public MirageAI(UnitTypeTable utt) {
-        this(4, 
-             new WorkerRush(utt, new AStarPathFinding()), 100, 
-             new SimpleSqrtEvaluationFunction3());
+        this(50, new SimpleSqrtEvaluationFunction3());
     }
+
     
-    
-    public MirageAI(int md, AI a_playoutAI, int a_maxPlayoutTime, EvaluationFunction a_ef) {
-        MAXDEPTH = md;
-        playoutAI = a_playoutAI;
-        maxPlayoutTime = a_maxPlayoutTime;
+    public MirageAI(int la, EvaluationFunction a_ef) {
+        LOOKAHEAD = la;
         ef = a_ef;
     }
             
     
+    @Override
     public void reset() {
-        max_depth_so_far = 0;
-        max_branching_so_far = 0;
-        max_leaves_so_far = 0;
-        max_nodes_so_far = 0;
     }
     
+
+    @Override
     public AI clone() {
-        return new MirageAI(MAXDEPTH, playoutAI, maxPlayoutTime, ef);
+        return new MirageAI(LOOKAHEAD, ef);
     }     
+
     
+    @Override
     public PlayerAction getAction(int player, GameState gs) throws Exception {
         
         if (gs.canExecuteAnyAction(player) && gs.winner()==-1) {
-            PlayerAction pa = ABCD(player, gs, MAXDEPTH); 
+            PlayerAction pa = realTimeMinimaxAB(player, gs, LOOKAHEAD); 
             pa.fillWithNones(gs, player, defaultNONEduration);
             return pa;
         } else {
@@ -84,165 +76,143 @@ public class MirageAI extends AI {
     }
     
     
-    public PlayerAction ABCD(int player, GameState gs, int depthLeft) throws Exception {
+    public PlayerAction greedyActionScan(GameState gs, int player, long cutOffTime) throws Exception {        
+        PlayerAction best = null;
+        float bestScore = 0;
+        PlayerActionGenerator pag = new PlayerActionGenerator(gs,player);
+        PlayerAction pa = null;
+
+//        System.out.println(gs.getUnitActions());
+//        System.out.println(pag);
+        do{
+            pa = pag.getNextAction(cutOffTime);
+            if (pa!=null) {
+                GameState gs2 = gs.cloneIssue(pa);
+                float score = ef.evaluate(player, 1 - player, gs2);
+                if (best==null || score>bestScore) {
+                    best = pa;
+                    bestScore = score; 
+                }                
+            }
+            if (System.currentTimeMillis()>cutOffTime) return best;
+        }while(pa!=null);
+        return best;
+    }
+    
+    
+    public PlayerAction realTimeMinimaxAB(int player, GameState gs, int lookAhead) {
         long start = System.currentTimeMillis();
         float alpha = -EvaluationFunction.VICTORY;
         float beta = EvaluationFunction.VICTORY;
         int maxplayer = player;
         int minplayer = 1 - player;
-        if (DEBUG>=1) System.out.println("Starting ABCD... " + player);
+        System.out.println("Starting realTimeMinimaxAB...");
         if (nLeaves>max_leaves_so_far) max_leaves_so_far = nLeaves;
-        if (nNodes>max_nodes_so_far) max_nodes_so_far = nNodes;
+        minCT = -1;
+        maxCT = -1;
         nLeaves = 0;
-        nNodes = 0;
-        MiniMaxResult bestMove = ABCD(gs, maxplayer, minplayer, alpha, beta, depthLeft, maxplayer);
-        if (DEBUG>=1) System.out.println("ABCD: " + bestMove + " in " + (System.currentTimeMillis()-start));
+        MiniMaxResult bestMove = realTimeMinimaxAB(gs, maxplayer, minplayer, alpha, beta, gs.getTime() + lookAhead, 0);
+        System.out.println("realTimeMinimax: " + bestMove + " in " + (System.currentTimeMillis()-start));
         return bestMove.action;
     }
     
 
-    public MiniMaxResult ABCD(GameState gs, int maxplayer, int minplayer, float alpha, float beta, int depthLeft, int nextPlayerInSimultaneousNode) throws Exception {
+    public MiniMaxResult realTimeMinimaxAB(GameState gs, int maxplayer, int minplayer, float alpha, float beta, int lookAhead, int depth) {
 //        System.out.println("realTimeMinimaxAB(" + alpha + "," + beta + ") at " + gs.getTime());
 //        gs.dumpActionAssignments();
         
-        nNodes++;
-        
-        if (depthLeft<=0 || gs.winner()!=-1) {
+        if (gs.getTime()>=lookAhead || gs.winner()!=-1) {
+            int CT = gs.getNextChangeTime();
+            if (minCT==-1 || CT<minCT) minCT = CT;
+            if (maxCT==-1 || CT>maxCT) maxCT = CT;
             nLeaves++;
-            
-            // Run the play out:
-            GameState gs2 = gs.clone();
-            AI playoutAI1 = playoutAI.clone();
-            AI playoutAI2 = playoutAI.clone();
-            int timeOut = gs2.getTime() + maxPlayoutTime;
-            boolean gameover = false;
-            while(!gameover && gs2.getTime()<timeOut) {
-                if (gs2.isComplete()) {
-                    gameover = gs2.cycle();
-                } else {
-                    gs2.issue(playoutAI1.getAction(0, gs2));
-                    gs2.issue(playoutAI2.getAction(1, gs2));
-                }
-            }            
-            
 //            System.out.println("Eval (at " + gs.getTime() + "): " + EvaluationFunction.evaluate(maxplayer, minplayer, gs));
 //            System.out.println(gs);
-            return new MiniMaxResult(null,ef.evaluate(maxplayer, minplayer, gs2), gs2);
-        }
-        
-        int toMove = -1;        
-        if (gs.canExecuteAnyAction(maxplayer)) {
-            if (gs.canExecuteAnyAction(minplayer)) {
-                toMove = nextPlayerInSimultaneousNode;
-                nextPlayerInSimultaneousNode = 1 - nextPlayerInSimultaneousNode;
-            } else {
-                toMove = maxplayer;
-            }
-        } else {
-            if (gs.canExecuteAnyAction(minplayer)) toMove = minplayer;
+            return new MiniMaxResult(null,ef.evaluate(maxplayer, minplayer, gs), gs);
         }
 
-        if (toMove == maxplayer) {
-            PlayerActionGenerator actions = new PlayerActionGenerator(gs, maxplayer);
-            long l = actions.getSize();
+        if (gs.canExecuteAnyAction(maxplayer)) {
+            List<PlayerAction> actions_max = gs.getPlayerActions(maxplayer);
+            int l = actions_max.size();
             if (l>max_branching_so_far) max_branching_so_far = l;
             MiniMaxResult best = null;
-            PlayerAction next = null;
-            do{
-                next = actions.getNextAction(-1);
-                if (next!=null) {
-                    GameState gs2 = gs.cloneIssue(next);
-                    MiniMaxResult tmp = ABCD(gs2, maxplayer, minplayer, alpha, beta, depthLeft-1, nextPlayerInSimultaneousNode);
-                    alpha = Math.max(alpha,tmp.evaluation);
-                    if (best==null || tmp.evaluation>best.evaluation) {
-                        best = tmp;
-                        best.action = next;
-                    }
-                    if (beta<=alpha) return best;                
+//            System.out.println("realTimeMinimaxAB.max: " + actions_max.size());
+            for(PlayerAction action_max:actions_max) {
+                GameState gs2 = gs.cloneIssue(action_max);
+//                System.out.println("action_max: " + action_max);
+                MiniMaxResult tmp = realTimeMinimaxAB(gs2, maxplayer, minplayer, alpha, beta, lookAhead, depth+1);
+//                System.out.println(action_max + " -> " + tmp.evaluation);
+                alpha = Math.max(alpha,tmp.evaluation);
+                if (best==null || tmp.evaluation>best.evaluation) {
+                    best = tmp;
+                    best.action = action_max;
                 }
-            }while(next!=null);
+                
+//                if (depth==0) {
+//                    System.out.println(action_max + " -> " + tmp.evaluation);
+//                    System.out.println(tmp.gs);
+//                }
+                
+                if (beta<=alpha) return best;
+            }
             return best;
-        } else if (toMove == minplayer) {
-            PlayerActionGenerator actions = new PlayerActionGenerator(gs, minplayer);
-            long l = actions.getSize();
+        } else if (gs.canExecuteAnyAction(minplayer)) {
+            List<PlayerAction> actions_min = gs.getPlayerActions(minplayer);
+            int l = actions_min.size();
             if (l>max_branching_so_far) max_branching_so_far = l;
             MiniMaxResult best = null;
-            PlayerAction next = null;
-            do{
-                next = actions.getNextAction(-1);
-                if (next!=null) {
-                    GameState gs2 = gs.cloneIssue(next);
-                    MiniMaxResult tmp = ABCD(gs2, maxplayer, minplayer, alpha, beta, depthLeft-1, nextPlayerInSimultaneousNode);
-                    beta = Math.min(beta,tmp.evaluation);
-                    if (best==null || tmp.evaluation<best.evaluation) {
-                        best = tmp;
-                        best.action = next;
-                    }
-                    if (beta<=alpha) return best;
+//            System.out.println("realTimeMinimaxAB.min: " + actions_min.size());
+            for(PlayerAction action_min:actions_min) {
+                GameState gs2 = gs.cloneIssue(action_min);
+//                System.out.println("action_min: " + action_min);
+                MiniMaxResult tmp = realTimeMinimaxAB(gs2, maxplayer, minplayer, alpha, beta, lookAhead, depth+1);
+                beta = Math.min(beta,tmp.evaluation);
+                if (best==null || tmp.evaluation<best.evaluation) {
+                    best = tmp;
+                    best.action = action_min;
                 }
-            }while(next!=null);
+                if (beta<=alpha) return best;
+            }
             return best;
         } else {
             GameState gs2 = gs.clone();
             while(gs2.winner()==-1 && 
-                  !gs2.gameover() && 
+                  !gs2.gameover() &&
                   !gs2.canExecuteAnyAction(maxplayer) && 
                   !gs2.canExecuteAnyAction(minplayer)) gs2.cycle();
-            return ABCD(gs2, maxplayer, minplayer, alpha, beta, depthLeft, nextPlayerInSimultaneousNode);
+            return realTimeMinimaxAB(gs2, maxplayer, minplayer, alpha, beta, lookAhead, depth+1);
         }
-    }       
-    
-    
-    @Override
+    }    
+
+
     public String toString() {
-        return getClass().getSimpleName() + "(" + MAXDEPTH + ", " + playoutAI + ", " + maxPlayoutTime + ", " + ef + ")";
+        return getClass().getSimpleName() + "(" + LOOKAHEAD + ", " + ef + ")";
     }     
-    
+
     
     @Override
     public List<ParameterSpecification> getParameters()
     {
         List<ParameterSpecification> parameters = new ArrayList<>();
         
-        parameters.add(new ParameterSpecification("MaxDepth",int.class,4));
-        parameters.add(new ParameterSpecification("PlayoutLookahead",int.class,100));
-        parameters.add(new ParameterSpecification("PlayoutAI",AI.class, playoutAI));
+        parameters.add(new ParameterSpecification("LookAhead",int.class,50));
         parameters.add(new ParameterSpecification("EvaluationFunction", EvaluationFunction.class, new SimpleSqrtEvaluationFunction3()));
         
         return parameters;
-    }       
+    }    
     
     
-    public int getMaxDepth() {
-        return MAXDEPTH;
+    
+    public int getLookAhead() {
+        return LOOKAHEAD;
     }
     
     
-    public void setMaxDepth(int a_md) {
-        MAXDEPTH = a_md;
+    public void setLookAhead(int a_la) {
+        LOOKAHEAD = a_la;
     }
     
     
-    public int getPlayoutLookahead() {
-        return maxPlayoutTime;
-    }
-    
-    
-    public void setPlayoutLookahead(int a_pola) {
-        maxPlayoutTime = a_pola;
-    }
-
-
-    public AI getPlayoutAI() {
-        return playoutAI;
-    }
-    
-    
-    public void setPlayoutAI(AI a_dp) {
-        playoutAI = a_dp;
-    }
-    
-
     public EvaluationFunction getEvaluationFunction() {
         return ef;
     }
@@ -250,5 +220,5 @@ public class MirageAI extends AI {
     
     public void setEvaluationFunction(EvaluationFunction a_ef) {
         ef = a_ef;
-    }
+    }    
 }
