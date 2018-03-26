@@ -4,212 +4,288 @@
  */
 package bot;
 
-import ai.evaluation.EvaluationFunctionForwarding;
 import ai.core.AI;
+import ai.RandomBiasedAI;
+import ai.core.AIWithComputationBudget;
 import ai.core.ParameterSpecification;
 import ai.evaluation.EvaluationFunction;
 import ai.evaluation.SimpleSqrtEvaluationFunction3;
-import ai.minimax.MiniMaxResult;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import rts.GameState;
 import rts.PlayerAction;
 import rts.PlayerActionGenerator;
 import rts.units.UnitTypeTable;
-import util.Pair;
+import ai.core.InterruptibleAI;
 
 /**
  *
  * @author santi
  * 
- * Attempting the RTMinimax bot to see if this one results in DQ.
+ * Please don't DQ me!!!
  */
-public class MirageAI extends AI {
-    // reset at each execution of minimax:
-    static int minCT = -1;
-    static int maxCT = -1;
-    static int nLeaves = 0;
-    
-    public long max_branching_so_far = 0;
-    public long max_leaves_so_far = 0;
-    
-    int LOOKAHEAD = 40;
 
-    protected int defaultNONEduration = 8;
-    
+public class MirageAI extends AIWithComputationBudget implements InterruptibleAI {
+    public static final int DEBUG = 0;
     EvaluationFunction ef = null;
     
     
+    public class PlayerActionTableEntry {
+        PlayerAction pa;
+        float accum_evaluation = 0;
+        int visit_count = 0;
+    }
+    
+    
+    Random r = new Random();
+    AI randomAI = new RandomBiasedAI();
+    long max_actions_so_far = 0;
+    
+    PlayerActionGenerator  moveGenerator = null;
+    boolean allMovesGenerated = false;
+    List<PlayerActionTableEntry> actions = null;
+    GameState gs_to_start_from = null;
+    int run = 0;
+    int playerForThisComputation;
+    
+    // statistics:
+    public long total_runs = 0;
+    public long total_cycles_executed = 0;
+    public long total_actions_issued = 0;
+        
+    long MAXACTIONS = 100;
+    int MAXSIMULATIONTIME = 1024;
+    
+    
     public MirageAI(UnitTypeTable utt) {
-        this(50, new SimpleSqrtEvaluationFunction3());
+        this(100, -1, 100,
+             new RandomBiasedAI(), 
+             new SimpleSqrtEvaluationFunction3());
     }
 
     
-    public MirageAI(int la, EvaluationFunction a_ef) {
-        LOOKAHEAD = la;
+    public MirageAI(int available_time, int playouts_per_cycle, int lookahead, AI policy, EvaluationFunction a_ef) {
+        super(available_time, playouts_per_cycle);
+        MAXACTIONS = -1;
+        MAXSIMULATIONTIME = lookahead;
+        randomAI = policy;
         ef = a_ef;
     }
-            
+
+    public MirageAI(int available_time, int playouts_per_cycle, int lookahead, long maxactions, AI policy, EvaluationFunction a_ef) {
+        super(available_time, playouts_per_cycle);
+        MAXACTIONS = maxactions;
+        MAXSIMULATIONTIME = lookahead;
+        randomAI = policy;
+        ef = a_ef;
+    }
     
-    @Override
+    
+    public void printStats() {
+        if (total_cycles_executed>0 && total_actions_issued>0) {
+            System.out.println("Average runs per cycle: " + ((double)total_runs)/total_cycles_executed);
+            System.out.println("Average runs per action: " + ((double)total_runs)/total_actions_issued);
+        }
+    }
+    
     public void reset() {
-    }
-    
-
-    @Override
-    public AI clone() {
-        return new MirageAI(LOOKAHEAD, ef);
-    }     
-
-    
-    @Override
-    public PlayerAction getAction(int player, GameState gs) throws Exception {
-        
-        if (gs.canExecuteAnyAction(player) && gs.winner()==-1) {
-            PlayerAction pa = realTimeMinimaxAB(player, gs, LOOKAHEAD); 
-            pa.fillWithNones(gs, player, defaultNONEduration);
-            return pa;
-        } else {
-            return new PlayerAction();
-        }
-
-    }
-    
-    
-    public PlayerAction greedyActionScan(GameState gs, int player, long cutOffTime) throws Exception {        
-        PlayerAction best = null;
-        float bestScore = 0;
-        PlayerActionGenerator pag = new PlayerActionGenerator(gs,player);
-        PlayerAction pa = null;
-
-//        System.out.println(gs.getUnitActions());
-//        System.out.println(pag);
-        do{
-            pa = pag.getNextAction(cutOffTime);
-            if (pa!=null) {
-                GameState gs2 = gs.cloneIssue(pa);
-                float score = ef.evaluate(player, 1 - player, gs2);
-                if (best==null || score>bestScore) {
-                    best = pa;
-                    bestScore = score; 
-                }                
-            }
-            if (System.currentTimeMillis()>cutOffTime) return best;
-        }while(pa!=null);
-        return best;
-    }
-    
-    
-    public PlayerAction realTimeMinimaxAB(int player, GameState gs, int lookAhead) {
-        long start = System.currentTimeMillis();
-        float alpha = -EvaluationFunction.VICTORY;
-        float beta = EvaluationFunction.VICTORY;
-        int maxplayer = player;
-        int minplayer = 1 - player;
-        System.out.println("Starting realTimeMinimaxAB...");
-        if (nLeaves>max_leaves_so_far) max_leaves_so_far = nLeaves;
-        minCT = -1;
-        maxCT = -1;
-        nLeaves = 0;
-        MiniMaxResult bestMove = realTimeMinimaxAB(gs, maxplayer, minplayer, alpha, beta, gs.getTime() + lookAhead, 0);
-        System.out.println("realTimeMinimax: " + bestMove + " in " + (System.currentTimeMillis()-start));
-        return bestMove.action;
-    }
-    
-
-    public MiniMaxResult realTimeMinimaxAB(GameState gs, int maxplayer, int minplayer, float alpha, float beta, int lookAhead, int depth) {
-//        System.out.println("realTimeMinimaxAB(" + alpha + "," + beta + ") at " + gs.getTime());
-//        gs.dumpActionAssignments();
-        
-        if (gs.getTime()>=lookAhead || gs.winner()!=-1) {
-            int CT = gs.getNextChangeTime();
-            if (minCT==-1 || CT<minCT) minCT = CT;
-            if (maxCT==-1 || CT>maxCT) maxCT = CT;
-            nLeaves++;
-//            System.out.println("Eval (at " + gs.getTime() + "): " + EvaluationFunction.evaluate(maxplayer, minplayer, gs));
-//            System.out.println(gs);
-            return new MiniMaxResult(null,ef.evaluate(maxplayer, minplayer, gs), gs);
-        }
-
-        if (gs.canExecuteAnyAction(maxplayer)) {
-            List<PlayerAction> actions_max = gs.getPlayerActions(maxplayer);
-            int l = actions_max.size();
-            if (l>max_branching_so_far) max_branching_so_far = l;
-            MiniMaxResult best = null;
-//            System.out.println("realTimeMinimaxAB.max: " + actions_max.size());
-            for(PlayerAction action_max:actions_max) {
-                GameState gs2 = gs.cloneIssue(action_max);
-//                System.out.println("action_max: " + action_max);
-                MiniMaxResult tmp = realTimeMinimaxAB(gs2, maxplayer, minplayer, alpha, beta, lookAhead, depth+1);
-//                System.out.println(action_max + " -> " + tmp.evaluation);
-                alpha = Math.max(alpha,tmp.evaluation);
-                if (best==null || tmp.evaluation>best.evaluation) {
-                    best = tmp;
-                    best.action = action_max;
-                }
-                
-//                if (depth==0) {
-//                    System.out.println(action_max + " -> " + tmp.evaluation);
-//                    System.out.println(tmp.gs);
-//                }
-                
-                if (beta<=alpha) return best;
-            }
-            return best;
-        } else if (gs.canExecuteAnyAction(minplayer)) {
-            List<PlayerAction> actions_min = gs.getPlayerActions(minplayer);
-            int l = actions_min.size();
-            if (l>max_branching_so_far) max_branching_so_far = l;
-            MiniMaxResult best = null;
-//            System.out.println("realTimeMinimaxAB.min: " + actions_min.size());
-            for(PlayerAction action_min:actions_min) {
-                GameState gs2 = gs.cloneIssue(action_min);
-//                System.out.println("action_min: " + action_min);
-                MiniMaxResult tmp = realTimeMinimaxAB(gs2, maxplayer, minplayer, alpha, beta, lookAhead, depth+1);
-                beta = Math.min(beta,tmp.evaluation);
-                if (best==null || tmp.evaluation<best.evaluation) {
-                    best = tmp;
-                    best.action = action_min;
-                }
-                if (beta<=alpha) return best;
-            }
-            return best;
-        } else {
-            GameState gs2 = gs.clone();
-            while(gs2.winner()==-1 && 
-                  !gs2.gameover() &&
-                  !gs2.canExecuteAnyAction(maxplayer) && 
-                  !gs2.canExecuteAnyAction(minplayer)) gs2.cycle();
-            return realTimeMinimaxAB(gs2, maxplayer, minplayer, alpha, beta, lookAhead, depth+1);
-        }
+        moveGenerator = null;
+        actions = null;
+        gs_to_start_from = null;
+        run = 0;
     }    
+    
+    public AI clone() {
+        return new MirageAI(TIME_BUDGET, ITERATIONS_BUDGET, MAXSIMULATIONTIME, MAXACTIONS, randomAI, ef);
+    }
+    
+    
+    public final PlayerAction getAction(int player, GameState gs) throws Exception
+    {
+        if (gs.canExecuteAnyAction(player)) {
+            startNewComputation(player,gs.clone());
+            computeDuringOneGameFrame();
+            return getBestActionSoFar();
+        } else {
+            return new PlayerAction();        
+        }       
+    }
 
+    
+    public void startNewComputation(int a_player, GameState gs) throws Exception {
+        if (DEBUG>=2) System.out.println("Starting a new search...");
+        if (DEBUG>=2) System.out.println(gs);
+        playerForThisComputation = a_player;
+        gs_to_start_from = gs;
+        moveGenerator = new PlayerActionGenerator(gs,playerForThisComputation);
+        moveGenerator.randomizeOrder();
+        allMovesGenerated = false;
+        actions = null;  
+        run = 0;
+    }    
+    
+    
+    public void resetSearch() {
+        if (DEBUG>=2) System.out.println("Resetting search...");
+        gs_to_start_from = null;
+        moveGenerator = null;
+        actions = null;
+        run = 0;
+    }
+    
 
+    public void computeDuringOneGameFrame() throws Exception {
+        if (DEBUG>=2) System.out.println("Search...");
+        long start = System.currentTimeMillis();
+        int nruns = 0;
+        long cutOffTime = (TIME_BUDGET>0 ? System.currentTimeMillis() + TIME_BUDGET:0);
+        if (TIME_BUDGET<=0) cutOffTime = 0;
+        
+        if (actions==null) {
+            actions = new ArrayList<>();
+            if (MAXACTIONS>0 && moveGenerator.getSize()>2*MAXACTIONS) {
+                for(int i = 0;i<MAXACTIONS;i++) {
+                	MirageAI.PlayerActionTableEntry pate = new MirageAI.PlayerActionTableEntry();
+                    pate.pa = moveGenerator.getRandom();
+                    actions.add(pate);
+                }
+                max_actions_so_far = Math.max(moveGenerator.getSize(),max_actions_so_far);
+                if (DEBUG>=1) System.out.println("MontCarloAI (random action sampling) for player " + playerForThisComputation + " chooses between " + moveGenerator.getSize() + " actions [maximum so far " + max_actions_so_far + "] (cycle " + gs_to_start_from.getTime() + ")");
+            } else {      
+                PlayerAction pa;
+                long count = 0;
+                do{
+                    pa = moveGenerator.getNextAction(cutOffTime);
+                    if (pa!=null) {
+                    	MirageAI.PlayerActionTableEntry pate = new MirageAI.PlayerActionTableEntry();
+                        pate.pa = pa;
+                        actions.add(pate);
+                        count++;
+                        if (MAXACTIONS>0 && count>=2*MAXACTIONS) break; // this is needed since some times, moveGenerator.size() overflows
+                    }
+                }while(pa!=null);
+                max_actions_so_far = Math.max(actions.size(),max_actions_so_far);
+                if (DEBUG>=1) System.out.println("MontCarloAI (complete generation plus random reduction) for player " + playerForThisComputation + " chooses between " + actions.size() + " actions [maximum so far " + max_actions_so_far + "] (cycle " + gs_to_start_from.getTime() + ")");
+                while(MAXACTIONS>0 && actions.size()>MAXACTIONS) actions.remove(r.nextInt(actions.size()));
+            }      
+        }
+        
+        while(true) {
+            if (TIME_BUDGET>0 && (System.currentTimeMillis() - start)>=TIME_BUDGET) break;
+            if (ITERATIONS_BUDGET>0 && nruns>=ITERATIONS_BUDGET) break;
+            monteCarloRun(playerForThisComputation, gs_to_start_from);
+            nruns++;
+        }
+        
+        total_cycles_executed++;
+    }
+    
+
+    public void monteCarloRun(int player, GameState gs) throws Exception {
+        int idx = run%actions.size();
+//        System.out.println(idx);
+        PlayerActionTableEntry pate = actions.get(idx);
+
+        GameState gs2 = gs.cloneIssue(pate.pa);
+        GameState gs3 = gs2.clone();
+        simulate(gs3,gs3.getTime() + MAXSIMULATIONTIME);
+        int time = gs3.getTime() - gs2.getTime();
+
+        pate.accum_evaluation += ef.evaluate(player, 1-player, gs3)*Math.pow(0.99,time/10.0);    
+        pate.visit_count++;
+        run++;
+        total_runs++;
+    }
+    
+    
+    public PlayerAction getBestActionSoFar() {
+        // find the best:
+        PlayerActionTableEntry best = null;
+        for(PlayerActionTableEntry pate:actions) {
+            if (best==null || (pate.accum_evaluation/pate.visit_count)>(best.accum_evaluation/best.visit_count)) {
+                best = pate;
+            }
+        }
+        if (best==null) {
+        	MirageAI.PlayerActionTableEntry pate = new MirageAI.PlayerActionTableEntry();
+            pate.pa = moveGenerator.getRandom();
+            System.err.println("MonteCarlo.getBestActionSoFar: best action was null!!! action.size() = " + actions.size());
+        }
+        
+        if (DEBUG>=1) {
+            System.out.println("Executed " + run + " runs");
+            System.out.println("Selected action: " + best + " visited " + best.visit_count + " with average evaluation " + (best.accum_evaluation/best.visit_count));
+        }      
+        
+        total_actions_issued++;
+        
+        return best.pa;        
+    }
+    
+    
+    public void simulate(GameState gs, int time) throws Exception {
+        boolean gameover = false;
+
+        do{
+            if (gs.isComplete()) {
+                gameover = gs.cycle();
+            } else {
+                gs.issue(randomAI.getAction(0, gs));
+                gs.issue(randomAI.getAction(1, gs));
+            }
+        }while(!gameover && gs.getTime()<time);   
+    }
+    
+    
     public String toString() {
-        return getClass().getSimpleName() + "(" + LOOKAHEAD + ", " + ef + ")";
-    }     
-
+        return getClass().getSimpleName() + "(" + TIME_BUDGET + "," + ITERATIONS_BUDGET + "," +  MAXSIMULATIONTIME + "," + MAXACTIONS + ", " + randomAI + ", " + ef + ")";
+    }
+    
     
     @Override
     public List<ParameterSpecification> getParameters()
     {
         List<ParameterSpecification> parameters = new ArrayList<>();
         
-        parameters.add(new ParameterSpecification("LookAhead",int.class,50));
+        parameters.add(new ParameterSpecification("TimeBudget",int.class,100));
+        parameters.add(new ParameterSpecification("IterationsBudget",int.class,-1));
+        parameters.add(new ParameterSpecification("PlayoutLookahead",int.class,100));
+        parameters.add(new ParameterSpecification("MaxActions",long.class,100));
+        parameters.add(new ParameterSpecification("playoutAI",AI.class, randomAI));
         parameters.add(new ParameterSpecification("EvaluationFunction", EvaluationFunction.class, new SimpleSqrtEvaluationFunction3()));
         
         return parameters;
-    }    
+    }       
     
     
-    
-    public int getLookAhead() {
-        return LOOKAHEAD;
+    public int getPlayoutLookahead() {
+        return MAXSIMULATIONTIME;
     }
     
     
-    public void setLookAhead(int a_la) {
-        LOOKAHEAD = a_la;
+    public void setPlayoutLookahead(int a_pola) {
+        MAXSIMULATIONTIME = a_pola;
+    }
+
+
+    public long getMaxActions() {
+        return MAXACTIONS;
+    }
+    
+    
+    public void setMaxActions(long a_ma) {
+        MAXACTIONS = a_ma;
+    }
+
+
+    public AI getplayoutAI() {
+        return randomAI;
+    }
+    
+    
+    public void setplayoutAI(AI a_dp) {
+        randomAI = a_dp;
     }
     
     
@@ -220,5 +296,5 @@ public class MirageAI extends AI {
     
     public void setEvaluationFunction(EvaluationFunction a_ef) {
         ef = a_ef;
-    }    
+    }      
 }
