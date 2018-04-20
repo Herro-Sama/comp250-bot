@@ -226,38 +226,63 @@ public class MirageAI extends AbstractionLayerAI {
         Unit closestEnemyBase = null;
         int closestDistance = 0;
 
-        for (Unit u2 : pgs.getUnits()) {
-            if (u2.getPlayer() >= 0 && u2.getPlayer() != p.getID()) {
+        
+        //Checks all units currently in the game state.
+        for (Unit u2 : pgs.getUnits()) 
+        {
+        	//Check to see which player the Unit belongs to.
+            if (u2.getPlayer() >= 0 && u2.getPlayer() != p.getID()) 
+            {
+            	// If the Unit doesn't belong to the player get its distance.
                 int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                if (closestEnemy == null || d < closestDistance) {
+                
+                if (closestEnemy == null || d < closestDistance) 
+                {
+                	// Store the current shortest distance.
                     closestEnemy = u2;
                     closestDistance = d;
                 }
             }
-            if (u2.getType() == baseType && u2.getPlayer() == p.getID()) {
+            
+            // Check if the unit is a base and what player it belongs too.
+            if (u2.getType() == baseType && u2.getPlayer() == p.getID()) 
+            {
+            	//Get the absolute distance of the base.
                 int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                if (closestBase == null || d < closestDistance) {
+                
+                if (closestBase == null || d < closestDistance) 
+                {
+                	// If this is the closest base set it.
                     closestBase = u2;
                     closestDistance = d;
                 }
             }
 
-            if (u2.getType() == barracksType && u2.getPlayer() == p.getID()) {
+            // Check if the unit is a base.
+            if (u2.getType() == barracksType && u2.getPlayer() == p.getID()) 
+            {
                 int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                if (closestRacks == null || d < closestDistance) {
+                
+                if (closestRacks == null || d < closestDistance) 
+                {
                     closestRacks = u2;
                     closestDistance = d;
                 }
             }
-            if (u2.getType() == baseType && u2.getPlayer() != p.getID()) {
+            if (u2.getType() == baseType && u2.getPlayer() != p.getID()) 
+            {
                 int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                if (closestEnemyBase == null || d < closestDistance) {
+                
+                if (closestEnemyBase == null || d < closestDistance) 
+                {
                     closestEnemyBase = u2;
                     closestDistance = d;
                 }
             }
         }
-        if (closestEnemy != null) {
+        
+        if (closestEnemy != null) 
+        {
             rangedTactic(u, closestEnemy, closestBase, closestEnemyBase, utt, p);
 
         }
@@ -272,32 +297,45 @@ public class MirageAI extends AbstractionLayerAI {
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
 
-        for (Unit u2 : pgs.getUnits()) {
+        for (Unit u2 : pgs.getUnits()) 
+        {
             if (u2.getType() == baseType
-                    && u2.getPlayer() == p.getID()) {
+                    && u2.getPlayer() == p.getID()) 
+            {
                 nbases++;
             }
+            
             if (u2.getType() == barracksType
-                    && u2.getPlayer() == p.getID()) {
+                    && u2.getPlayer() == p.getID()) 
+            {
                 nbarracks++;
             }
+            
             if (u2.getType() == workerType
-                    && u2.getPlayer() == p.getID()) {
+                    && u2.getPlayer() == p.getID()) 
+            {
                 nworkers++;
             }
         }
 
-        if (workers.size() > (nbases + 1)) {
-            for (int n = 0; n < (nbases + 1); n++) {
+        if (workers.size() > (nbases + 2) ) 
+        {
+            for (int n = 0; n < (nbases + 2); n++) 
+            {
                 freeWorkers.add(workers.get(0));
                 workers.remove(0);
             }
+            
             battleWorkers.addAll(workers);
-        } else {
+        } 
+        
+        else 
+        {
             freeWorkers.addAll(workers);
         }
 
-        if (workers.isEmpty()) {
+        if (workers.isEmpty()) 
+        {
             return;
         }
 
@@ -474,7 +512,8 @@ public class MirageAI extends AbstractionLayerAI {
         }
     }
 
-    public void rangedTactic(Unit u, Unit target, Unit home, Unit enemyBase, UnitTypeTable utt, Player p) {
+    public void rangedTactic(Unit u, Unit target, Unit home, Unit enemyBase, UnitTypeTable utt, Player p) 
+    {
         actions.put(u, new CRanged_Tactic(u, target, home, enemyBase, pf, utt, p));
     }
 

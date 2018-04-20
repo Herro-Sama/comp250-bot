@@ -39,7 +39,8 @@ public class CRanged_Tactic extends AbstractAction {
     UnitTypeTable utt;
     Player p;
 
-    public CRanged_Tactic(Unit u, Unit a_target, Unit h, Unit eb, PathFinding a_pf, UnitTypeTable ut, Player pl) {
+    public CRanged_Tactic(Unit u, Unit a_target, Unit h, Unit eb, PathFinding a_pf, UnitTypeTable ut, Player pl) 
+    {
         super(u);
         target = a_target;
         pf = a_pf;
@@ -56,53 +57,69 @@ public class CRanged_Tactic extends AbstractAction {
         enemyBase = eb;
     }
 
-    public boolean completed(GameState gs) {
+    public boolean completed(GameState gs) 
+    {
         PhysicalGameState pgs = gs.getPhysicalGameState();
-        if (!pgs.getUnits().contains(target)) {
+        
+        if (!pgs.getUnits().contains(target)) 
+        {
             return true;
         }
         return false;
     }
 
-    public boolean equals(Object o) {
-        if (!(o instanceof Attack)) {
+    public boolean equals(Object o) 
+    {
+        
+    	if (!(o instanceof Attack)) 
+        {
             return false;
         }
-        CRanged_Tactic a = (CRanged_Tactic) o;
-        if (target.getID() != a.target.getID()) {
+        
+    	CRanged_Tactic a = (CRanged_Tactic) o;
+        
+    	if (target.getID() != a.target.getID()) 
+    	{
             return false;
         }
-        if (pf.getClass() != a.pf.getClass()) {
+        
+    	if (pf.getClass() != a.pf.getClass()) 
+    	{
             return false;
         }
 
         return true;
     }
 
-    public void toxml(XMLWriter w) {
+    public void toxml(XMLWriter w) 
+    {
         w.tagWithAttributes("Attack", "unitID=\"" + getUnit().getID() + "\" target=\"" + target.getID() + "\" pathfinding=\"" + pf.getClass().getSimpleName() + "\"");
         w.tag("/Attack");
     }
 
-    public UnitAction execute(GameState gs, ResourceUsage ru) {
+    public UnitAction execute(GameState gs, ResourceUsage ru) 
+    {
         PhysicalGameState pgs = gs.getPhysicalGameState();
 
         Unit unit = getUnit();
 
         boolean timeToAttack = false;
 
-        if (home == null) {
+        if (home == null) 
+        {
             home = unit;
         }
 
-        if (enemyBase == null) {
+        if (enemyBase == null) 
+        {
             enemyBase = target;
         }
 
         //Determining distances
         double rd = 0.0;
 
-        if (home != null) {
+        if (home != null) 
+        {
             rd = distance(unit, home);
         }
 
@@ -116,31 +133,38 @@ public class CRanged_Tactic extends AbstractAction {
         int enemyWorkers = 0;
         int cutoffTime = 5000;
 
-        if ((pgs.getWidth() * pgs.getHeight()) > 3000) {
+        if ((pgs.getWidth() * pgs.getHeight()) > 3000) 
+        {
             cutoffTime = 15000;
         }
 
-        for (Unit u2 : gameUnites) {
-            if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == baseType) {
+        for (Unit u2 : gameUnites) 
+        {
+            if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == baseType) 
+            {
                 nEnemyBases++;
             }
 
             if (u2 != null && u2.getPlayer() != p.getID()
-                    && (u2.getType() == rangedType || u2.getType() == heavyType || u2.getType() == lightType)) {
+                    && (u2.getType() == rangedType || u2.getType() == heavyType || u2.getType() == lightType)) 
+            {
                 enemyAttackUnits++;
             }
 
-            if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == workerType) {
+            if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == workerType) 
+            {
                 enemyWorkers++;
             }
         }
 
         //Determining if its time to attack
-        if ((enemyWorkers < (2 * nEnemyBases) || nEnemyBases == 0) && enemyAttackUnits == 0) {
+        if ((enemyWorkers < (2 * nEnemyBases) || nEnemyBases == 0) && enemyAttackUnits == 0 || gs.getTime() > 2000) 
+        {
             timeToAttack = true;
         }
 
-        if (gs.getTime() > cutoffTime) {
+        if (gs.getTime() > cutoffTime) 
+        {
             timeToAttack = true;
         }
 
@@ -149,78 +173,124 @@ public class CRanged_Tactic extends AbstractAction {
 
         double ad = 0.0;
 
-        if (ally != null) {
+        if (ally != null) 
+        {
             ad = distance(ally, target);
         }
 
         //Action for workers
-        if (unit.getType() == workerType) {
+        if (unit.getType() == workerType) 
+        {
             UnitAction move = null;
-            if (d <= unit.getAttackRange()) {
+            
+            if (d <= unit.getAttackRange()) 
+            {
                 return new UnitAction(UnitAction.TYPE_ATTACK_LOCATION, target.getX(), target.getY());
-            } else if (timeToAttack) {
+            } 
+            else if (timeToAttack) 
+            {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
-            } else if (ally != null) {
+            } 
+            else if (ally != null) 
+            {
 
-                if (d > ad) {
+                if (d > ad) 
+                {
                     move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
-                } else {
+                } 
+                else 
+                {
                     move = pf.findPathToPositionInRange(unit, ally.getX() + ally.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 }
-                if (move == null) {
+                
+                if (move == null) 
+                {
                     move = pf.findPathToPositionInRange(unit, (ally.getX() - 1) + (ally.getY()) * gs.getPhysicalGameState().getWidth(), unit.getAttackRange() + 1, gs, ru);
                 }
-                if (move == null) {
+                
+                if (move == null) 
+                {
                     move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 }
-            } else {
+                
+            } 
+            
+            else 
+            {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
             }
 
-            if (move != null && gs.isUnitActionAllowed(unit, move)) {
+            if (move != null && gs.isUnitActionAllowed(unit, move)) 
+            {
                 return move;
             }
             return null;
         }
 
         //Action for ranged units
-        if (d <= unit.getAttackRange()) {
+        if (d <= unit.getAttackRange()) 
+        {
             return new UnitAction(UnitAction.TYPE_ATTACK_LOCATION, target.getX(), target.getY());
-        } //If the unit is the ally closest to enemy base
-        else if ((ally == null || ally.getID() == unit.getID())) {
+        } 
+        //If the unit is the ally closest to enemy base
+        else if ((ally == null || ally.getID() == unit.getID())) 
+        {
             UnitAction move = null;
 
-            if (timeToAttack && (target.getType() == baseType)) {
+            
+            if (timeToAttack && (target.getType() == baseType)) 
+            {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
-            } else if (rd < 5 || (distance(unit, enemyBase) > distance(home, enemyBase))) {
+            } 
+            
+            else if (rd < 5 || (distance(unit, enemyBase) > distance(home, enemyBase))) 
+            {
                 move = pf.findPathToPositionInRange(unit, enemyBase.getX() + enemyBase.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
             }
-            if (move != null && gs.isUnitActionAllowed(unit, move)) {
+            
+            if (move != null && gs.isUnitActionAllowed(unit, move)) 
+            {
                 return move;
             }
             return null;
-        } else if (timeToAttack) {
+            
+        } 
+        
+        else if (timeToAttack) 
+        {
 
             //Attack behavior
-            if (d <= (unit.getAttackRange()) - 1 && rd > 2 && unit.getMoveTime() < target.getMoveTime()) {
+            if (d <= (unit.getAttackRange()) - 1 && rd > 2 && unit.getMoveTime() < target.getMoveTime()) 
+            
+            {
                 UnitAction move = pf.findPathToPositionInRange(unit, home.getX() + home.getY() * gs.getPhysicalGameState().getWidth(), getUnit().getAttackRange(), gs, ru);
-                if (move != null && gs.isUnitActionAllowed(unit, move)) {
+                if (move != null && gs.isUnitActionAllowed(unit, move)) 
+                {
                     return move;
                 }
                 return null;
-            } else if (d <= unit.getAttackRange()) {
+                
+            } 
+            
+            else if (d <= unit.getAttackRange()) 
+            {
                 return new UnitAction(UnitAction.TYPE_ATTACK_LOCATION, target.getX(), target.getY());
-            } else {
+            } 
+            else 
+            {
                 // move towards the unit:
                 UnitAction move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), getUnit().getAttackRange(), gs, ru);
-                if (move != null && gs.isUnitActionAllowed(unit, move)) {
+                
+                if (move != null && gs.isUnitActionAllowed(unit, move)) 
+                {
                     return move;
                 }
                 return null;
             }
 
         } //Behavior for ranged units to move into a position next to the leading ranged unit (ally)
-        else {
+        else 
+        {
 
             Unit atUp = pgs.getUnitAt(ally.getX(), ally.getY() - 1);
             Unit atUpLeft = pgs.getUnitAt(ally.getX() - 1, ally.getY() - 1);
@@ -231,12 +301,17 @@ public class CRanged_Tactic extends AbstractAction {
 
             boolean positionFound = false;
 
-            if ((distanceWithoutUnits(ally.getX(), (ally.getY() + 1), enemyBase.getX(), enemyBase.getY()) > distance(ally, enemyBase))) {
-                while (!positionFound) {
+            if ((distanceWithoutUnits(ally.getX(), (ally.getY() + 1), enemyBase.getX(), enemyBase.getY()) > distance(ally, enemyBase))) 
+            {
+                while (!positionFound) 
+                {
                     if ((atDown != null && unit != atDown) && (atDownRight != null && unit != atDownRight)
-                            && (atRight != null && unit != atRight)) {
+                            && (atRight != null && unit != atRight)) 
+                    {
                         ally = atRight;
-                    } else {
+                    } 
+                    else 
+                    {
                         positionFound = true;
                     }
 
@@ -244,18 +319,25 @@ public class CRanged_Tactic extends AbstractAction {
                     atDownRight = pgs.getUnitAt(ally.getX() + 1, ally.getY() + 1);
                     atRight = pgs.getUnitAt(ally.getX() + 1, ally.getY());
 
-                    if (atDown == null || atDownRight == null || atRight == null) {
+                    if (atDown == null || atDownRight == null || atRight == null) 
+                    {
                         positionFound = true;
                     }
 
                 }
-            } else {
-                while (!positionFound) {
+            } 
+            else
+            {
+                while (!positionFound) 
+                {
 
                     if ((atUp != null && unit != atUp) && (atUpLeft != null && unit != atUpLeft)
-                            && (atLeft != null && unit != atLeft)) {
+                            && (atLeft != null && unit != atLeft)) 
+                    {
                         ally = atLeft;
-                    } else {
+                    } 
+                    else 
+                    {
                         positionFound = true;
                     }
 
@@ -263,7 +345,8 @@ public class CRanged_Tactic extends AbstractAction {
                     atUpLeft = pgs.getUnitAt(ally.getX() - 1, ally.getY() - 1);
                     atLeft = pgs.getUnitAt(ally.getX() - 1, ally.getY());
 
-                    if (atUp == null || atUpLeft == null || atLeft == null) {
+                    if (atUp == null || atUpLeft == null || atLeft == null) 
+                    {
                         positionFound = true;
                     }
 
@@ -275,8 +358,10 @@ public class CRanged_Tactic extends AbstractAction {
     }
 
     //Calculates distance between unit a and unit b
-    public double distance(Unit a, Unit b) {
-        if (a == null || b == null) {
+    public double distance(Unit a, Unit b) 
+    {
+        if (a == null || b == null) 
+        {
             return 0.0;
         }
         int dx = b.getX() - a.getX();
@@ -286,7 +371,8 @@ public class CRanged_Tactic extends AbstractAction {
     }
 
     //Calculates distance bewteen positions a and b using x,y coordinates 
-    public double distanceWithoutUnits(int xa, int ya, int xb, int yb) {
+    public double distanceWithoutUnits(int xa, int ya, int xb, int yb) 
+    {
         int dx = xb - xa;
         int dy = yb - ya;
         double toReturn = Math.sqrt(dx * dx + dy * dy);
@@ -294,7 +380,8 @@ public class CRanged_Tactic extends AbstractAction {
     }
 
     //Figures out correct move action for a square unit formation
-    public UnitAction squareMove(GameState gs, ResourceUsage ru, Unit targetUnit) {
+    public UnitAction squareMove(GameState gs, ResourceUsage ru, Unit targetUnit) 
+    {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Unit unit = getUnit();
         Unit ally = targetUnit;
@@ -313,38 +400,57 @@ public class CRanged_Tactic extends AbstractAction {
         UnitAction moveToDownRight = pf.findPath(unit, (ally.getX() + 1) + (ally.getY() + 1) * gs.getPhysicalGameState().getWidth(), gs, ru);
         UnitAction moveToRight = pf.findPath(unit, (ally.getX() + 1) + (ally.getY()) * gs.getPhysicalGameState().getWidth(), gs, ru);
 
-        if (distanceWithoutUnits(ally.getX(), (ally.getY() + 1), enemyBase.getX(), enemyBase.getY()) > distance(ally, enemyBase)) {
+        if (distanceWithoutUnits(ally.getX(), (ally.getY() + 1), enemyBase.getX(), enemyBase.getY()) > distance(ally, enemyBase)) 
+        {
             UnitAction move = null;
-            if (unit == atDown || unit == atDownRight || unit == atRight) {
+            
+            if (unit == atDown || unit == atDownRight || unit == atRight) 
+            {
                 return null;
             }
-            if (atDown == null) {
+            
+            if (atDown == null) 
+            {
                 move = moveToDown;
-            } else if (atRight == null) {
+            } 
+            else if (atRight == null) 
+            {
                 move = moveToRight;
-            } else if (atDownRight == null) {
+            } 
+            else if (atDownRight == null) 
+            {
                 move = moveToDownRight;
             }
 
-            if (move != null && gs.isUnitActionAllowed(unit, move)) {
+            if (move != null && gs.isUnitActionAllowed(unit, move)) 
+            {
                 return move;
             }
             return null;
-        } else {
+        } 
+        else 
+        {
             UnitAction move = null;
 
-            if (unit == atUp || unit == atUpLeft || unit == atLeft) {
+            if (unit == atUp || unit == atUpLeft || unit == atLeft) 
+            {
                 return null;
             }
-            if (atUp == null) {
+            if (atUp == null) 
+            {
                 move = moveToUp;
-            } else if (atLeft == null) {
+            } 
+            else if (atLeft == null) 
+            {
                 move = moveToLeft;
-            } else if (atUpLeft == null) {
+            } 
+            else if (atUpLeft == null) 
+            {
                 move = moveToUpLeft;
             }
 
-            if (move != null && gs.isUnitActionAllowed(unit, move)) {
+            if (move != null && gs.isUnitActionAllowed(unit, move)) 
+            {
                 return move;
             }
             return null;
@@ -352,50 +458,61 @@ public class CRanged_Tactic extends AbstractAction {
     }
 
     //Finds farthest ranged unit from starting point
-    public Unit farthestRangedAlly(Unit start, List<Unit> unites, GameState gs) {
+    public Unit farthestRangedAlly(Unit start, List<Unit> unites, GameState gs) 
+    {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Unit farthestUnit = null;
         double farthestDistance = 0;
 
-        for (Unit u2 : unites) {
+        for (Unit u2 : unites) 
+        {
             if (u2.getType() == rangedType
-                    && u2.getPlayer() == p.getID() && home != null) {
+                    && u2.getPlayer() == p.getID() && home != null) 
+            {
 
                 int dx = start.getX() - u2.getX();
                 int dy = start.getY() - u2.getY();
                 double d = Math.sqrt(dx * dx + dy * dy);
 
-                if (d > farthestDistance) {
+                if (d > farthestDistance) 
+                {
                     farthestDistance = d;
                     farthestUnit = u2;
                 }
             }
 
         }
+        // Ends function
         return farthestUnit;
     }
 
     //Finds nearest ranged unit from starting point
-    public Unit nearestRangedAlly(Unit start, List<Unit> unites, GameState gs) {
+    public Unit nearestRangedAlly(Unit start, List<Unit> unites, GameState gs) 
+    {
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Unit nearestUnit = null;
         double nearestDistance = -1;
 
-        if (start != null) {
-            for (Unit u2 : unites) {
-                if (u2 != null && u2.getPlayer() == p.getID() && u2.getType() == rangedType) {
+        if (start != null) 
+        {
+            for (Unit u2 : unites) 
+            {
+                if (u2 != null && u2.getPlayer() == p.getID() && u2.getType() == rangedType) 
+                {
 
                     int dx = start.getX() - u2.getX();
                     int dy = start.getY() - u2.getY();
                     double d = Math.sqrt(dx * dx + dy * dy);
 
-                    if (d < nearestDistance || nearestDistance == -1) {
+                    if (d < nearestDistance || nearestDistance == -1) 
+                    {
                         nearestDistance = d;
                         nearestUnit = u2;
                     }
                 }
             }
         }
+        //End of Function
         return nearestUnit;
     }
 }
