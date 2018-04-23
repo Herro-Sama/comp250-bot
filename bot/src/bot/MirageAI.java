@@ -258,23 +258,29 @@ public class MirageAI extends AbstractionLayerAI {
                 }
             }
 
-            // Check if the unit is a base.
+            // Check if the unit is a barracks and who it belongs too.
             if (u2.getType() == barracksType && u2.getPlayer() == p.getID()) 
             {
+            	// Get the distance to the barracks
                 int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
                 
                 if (closestRacks == null || d < closestDistance) 
                 {
+                	// if this is the closest barracks set it to be the closest barracks.
                     closestRacks = u2;
                     closestDistance = d;
                 }
             }
+            
+            //Get the closest enemy base
             if (u2.getType() == baseType && u2.getPlayer() != p.getID()) 
             {
-                int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
+                // Get the distance to the base
+            	int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
                 
                 if (closestEnemyBase == null || d < closestDistance) 
                 {
+                	// If this is the closest base store it's details.
                     closestEnemyBase = u2;
                     closestDistance = d;
                 }
@@ -283,6 +289,7 @@ public class MirageAI extends AbstractionLayerAI {
         
         if (closestEnemy != null) 
         {
+        	// If closest enemy isn't null begin running ranged tactics
             rangedTactic(u, closestEnemy, closestBase, closestEnemyBase, utt, p);
 
         }
