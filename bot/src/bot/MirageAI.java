@@ -35,6 +35,7 @@ public class MirageAI extends AbstractionLayerAI {
     UnitType rangedType;
     UnitType heavyType;
     UnitType lightType;
+    UnitType resourceType;
     boolean buildingRacks = false;
     int resourcesUsed = 0;
     boolean isRush = false;
@@ -59,6 +60,7 @@ public class MirageAI extends AbstractionLayerAI {
         barracksType = utt.getUnitType("Barracks");
         rangedType = utt.getUnitType("Ranged");
         lightType = utt.getUnitType("Light");
+        resourceType = utt.getUnitType("Resource");
     }
 
     public AI clone() {
@@ -299,6 +301,7 @@ public class MirageAI extends AbstractionLayerAI {
         int nbases = 0;
         int nbarracks = 0;
         int nworkers = 0;
+        int nresources = 0;
         resourcesUsed = 0;
 
         List<Unit> freeWorkers = new LinkedList<Unit>();
@@ -323,39 +326,50 @@ public class MirageAI extends AbstractionLayerAI {
             {
                 nworkers++;
             }
-        }
-
-        if (workers.size() > (nbases + 2) ) 
-        {
-            for (int n = 0; n < (nbases + 2); n++) 
+            
+            if (u2.getType() == resourceType)
             {
-                freeWorkers.add(workers.get(0));
-                workers.remove(0);
+            	nresources++;
             }
             
-            battleWorkers.addAll(workers);
-        } 
+        }
+         	
         
-        else 
-        {
-            freeWorkers.addAll(workers);
-        }
+        
+	    if (workers.size() >  (nbases + 2) ) 
+	    {
+	        for (int n = 0; n < (nresources / 2); n++) 
+	        {
+	            freeWorkers.add(workers.get(0));
+	            workers.remove(0);
+	        }
+	        
+	        battleWorkers.addAll(workers);
+	    } 
+	    
+	    else 
+	    {
+	        freeWorkers.addAll(workers);
+	    }
 
-        if (workers.isEmpty()) 
-        {
-            return;
-        }
+    	if (workers.isEmpty()) 
+    	{
+    		return;
+    	}
 
         List<Integer> reservedPositions = new LinkedList<Integer>();
-        if (nbases == 0 && !freeWorkers.isEmpty()) {
+        if (nbases == 0 && !freeWorkers.isEmpty()) 
+        {
             // build a base:
-            if (p.getResources() >= baseType.cost) {
+            if (p.getResources() >= baseType.cost) 
+            {
                 Unit u = freeWorkers.remove(0);
                 buildIfNotAlreadyBuilding(u, baseType, u.getX(), u.getY(), reservedPositions, p, pgs);
             }
         }
         if ((nbarracks == 0) && (!freeWorkers.isEmpty()) && nworkers > 1
-                && p.getResources() >= barracksType.cost) {
+                && p.getResources() >= barracksType.cost) 
+        {
 
             //The problem with this right now is that we can only track when a build command is sent
             //Not when it actually starts building the building.
@@ -365,62 +379,90 @@ public class MirageAI extends AbstractionLayerAI {
             resourcesUsed += barracksType.cost;
             buildingRacks = true;
 
-        } else {
+        } 
+        
+        else 
+        {
             resourcesUsed = barracksType.cost * nbarracks;
         }
 
-        if (nbarracks > 1) {
+        if (nbarracks > 1) 
+        {
             buildingRacks = true;
         }
 
-        for (Unit u : battleWorkers) {
+        for (Unit u : battleWorkers) 
+        {
             meleeUnitBehavior(u, p, gs);
         }
 
         // harvest with all the free workers:
-        for (Unit u : freeWorkers) {
+        for (Unit u : freeWorkers) 
+        {
             Unit closestBase = null;
             Unit closestResource = null;
             Unit closestEnemyBase = null;
+            List<Unit> resourcesAssigned = new LinkedList<Unit>();
             int closestDistance = 0;
-            for (Unit u2 : pgs.getUnits()) {
-                if (u2.getType().isResource) {
+            for (Unit u2 : pgs.getUnits()) 
+            {
+                if (u2.getType().isResource) 
+                {
                     int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                    if (closestResource == null || d < closestDistance) {
+                    
+                    
+                    if (closestResource == null || d < closestDistance) 
+                    {
                         closestResource = u2;
                         closestDistance = d;
                     }
                 }
-                if (u2.getType() == baseType && u2.getPlayer() != p.getID()) {
+                if (u2.getType() == baseType && u2.getPlayer() != p.getID()) 
+                {
                     int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                    if (closestEnemyBase == null || d < closestDistance) {
+                    
+                    if (closestEnemyBase == null || d < closestDistance) 
+                    {
                         closestEnemyBase = u2;
                         closestDistance = d;
                     }
                 }
             }
             closestDistance = 0;
-            for (Unit u2 : pgs.getUnits()) {
-                if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) {
+            
+            for (Unit u2 : pgs.getUnits()) 
+            {
+                if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
+                {
                     int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                    if (closestBase == null || d < closestDistance) {
+                    
+                    if (closestBase == null || d < closestDistance) 
+                    {
                         closestBase = u2;
                         closestDistance = d;
                     }
                 }
             }
-            if (closestResource == null || distance(closestResource, closestEnemyBase) < distance(closestResource, closestBase)) {
+            if (closestResource == null || distance(closestResource, closestEnemyBase) < distance(closestResource, closestBase)) 
+            {
                 //Do nothing
-            } else {
-                if (closestResource != null && closestBase != null) {
+            } 
+            else 
+            {
+                if (closestResource != null && closestBase != null) 
+                {
                     AbstractAction aa = getAbstractAction(u);
-                    if (aa instanceof Harvest) {
+                    if (aa instanceof Harvest) 
+                    {
                         Harvest h_aa = (Harvest) aa;
 
-                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) {
+                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+                        {
                             harvest(u, closestResource, closestBase);
                         }
-                    } else {
+                    } 
+                    else 
+                    {
                         harvest(u, closestResource, closestBase);
                     }
                 }
