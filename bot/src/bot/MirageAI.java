@@ -532,55 +532,59 @@ public class MirageAI extends AbstractionLayerAI {
                     }
                 }
             }
+		            
+            
             if (closestResource == null || distance(closestResource, closestEnemyBase) < distance(closestResource, closestBase)) 
-			{
-                if (pgs.getWidth() * pgs.getHeight() == 72)
-				{
-					
-					if (closestResource != null && closestBase != null) 
 					{
-						AbstractAction aa = getAbstractAction(u);
-
-						if (aa instanceof Harvest) 
+		                if (pgs.getWidth() * pgs.getHeight() == 72)
 						{
-							Harvest h_aa = (Harvest) aa;
-
-							if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+							
+							if (closestResource != null && closestBase != null) 
 							{
-								harvest(u, closestResource, closestBase);
+								AbstractAction aa = getAbstractAction(u);
+		
+								if (aa instanceof Harvest) 
+								{
+									Harvest h_aa = (Harvest) aa;
+		
+									if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+									{
+										harvest(u, closestResource, closestBase);
+									}
+								} 
+							
+								else 
+								{
+									harvest(u, closestResource, closestBase);
+								}
+		
 							}
-						} 
+						}
 					
-					else 
-					{
-						harvest(u, closestResource, closestBase);
-					}
-
-				}
-            }
-			
-			else 
-			{
-                if (closestResource != null && closestBase != null) 
-				{
-                    AbstractAction aa = getAbstractAction(u);
-                    if (aa instanceof Harvest) 
-					{
-                        Harvest h_aa = (Harvest) aa;
-
-                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+						else 
 						{
-                            harvest(u, closestResource, closestBase);
-                        }
-                    } 
-					
-					else 
-					{
-                        harvest(u, closestResource, closestBase);
-                    }
-                }
-            }
-        }
+			                if (closestResource != null && closestBase != null) 
+							{
+			                    AbstractAction aa = getAbstractAction(u);
+			                    
+			                    if (aa instanceof Harvest) 
+								{
+			                        Harvest h_aa = (Harvest) aa;
+			
+			                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+									{
+			                            harvest(u, closestResource, closestBase);
+			                        }
+								} 
+							
+							else 
+							{
+		                        harvest(u, closestResource, closestBase);
+		                    }
+		                }
+		            }
+				}
+		}
     }
 
     public void rushBaseBehavior(Unit u, Player p, PhysicalGameState pgs) 
