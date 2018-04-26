@@ -23,7 +23,9 @@ import rts.units.*;
 
 /**
  *
- * @author Cristiano D'Angelo
+ * @author Original Author Cristiano D'Angelo, Edited by Herro-Sama(1507729)
+ *  
+ * 
  */
 public class MirageAI extends AbstractionLayerAI {
 
@@ -429,8 +431,8 @@ public class MirageAI extends AbstractionLayerAI {
         {
             for (int n = 0; n < (nbases + 2); n++) 
             {
-                freeWorkers.add(workers.get(n));
-                workers.remove(n);
+                freeWorkers.add(workers.get(0));
+                workers.remove(0);
             }
             
             battleWorkers.addAll(workers);
@@ -479,10 +481,11 @@ public class MirageAI extends AbstractionLayerAI {
             buildingRacks = true;
         }
 
+        // Make all battleWorkers perform like meleeUnits
         for (Unit u : battleWorkers) 
 		{
             meleeUnitBehavior(u, p, gs);
-        }
+    	}
 
         // harvest with all the free workers:
         for (Unit u : freeWorkers) 
@@ -550,7 +553,69 @@ public class MirageAI extends AbstractionLayerAI {
 				{
 		        	//Do Nothing
 				}
+		        
+		        else 
+		        {
+	                 if (closestResource != null && closestBase != null) 
+	                 {
+	                     AbstractAction aa = getAbstractAction(u);
+	                     if (aa instanceof Harvest) 
+	                     {
+	                         Harvest h_aa = (Harvest) aa;
+	 
+	                         if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+	                         {
+	                             harvest(u, closestResource, closestBase);
+	                         }
+	                     } 
+	                     
+	                     else 
+	                     {
+	                         harvest(u, closestResource, closestBase);
+	                     }
+	                 }
+		        }
             }
+            
+            else
+            {
+            	if (closestResource != null && closestBase != null) 
+                {
+            		for (Unit u2 : pgs.getUnits()) 
+        			{
+                    	
+                        if (u2.getType().isResource) 
+        				{
+                            int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
+                            
+                            // Check if the current resource is the closest and store it.
+                            if (closestResource == null || d < closestDistance) 
+        					{
+                                closestResource = u2;
+                                closestDistance = d;
+                            }
+                           
+                        }
+	                    AbstractAction aa = getAbstractAction(u);
+	                    if (aa instanceof Harvest) 
+	                    {
+	                        Harvest h_aa = (Harvest) aa;
+	
+	                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+	                        {
+	                            harvest(u, closestResource, closestBase);
+	                        }
+	                    } 
+	                    
+	                    else 
+	                    {
+	                        harvest(u, closestResource, closestBase);
+	                    }
+        			}
+                }
+            	
+            }
+            
 		}
     }
 
