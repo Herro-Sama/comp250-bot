@@ -218,7 +218,25 @@ public class CRanged_Tactic extends AbstractAction {
             else 
             {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
+                if(move == null)
+                {
+                	for (int baseXOffset = -1; baseXOffset < 2; baseXOffset++)
+                	{
+                		for (int baseYOffset = -1; baseYOffset < 2; baseYOffset++)
+                    	{
+                    		if (unit.getX() == (home.getX()+baseXOffset) || unit.getY() == (home.getY()+baseYOffset))
+                    		{
+                    			move = pf.findPathToPositionInRange(unit, (home.getX() + baseXOffset * 2) + (home.getY() + baseYOffset * 2) * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
+                    			break;
+                    		}
+                    	}
+                	}
+                	
+                	
+                }
             }
+            
+            
 
             if (move != null && gs.isUnitActionAllowed(unit, move)) 
             {

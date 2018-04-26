@@ -405,6 +405,7 @@ public class MirageAI extends AbstractionLayerAI {
 
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
+        List<Unit> availableResources = new LinkedList<Unit>();
 
 
 		// Sort through each unit to find all the bases and workers controlled by the player during this cycle.
@@ -501,7 +502,7 @@ public class MirageAI extends AbstractionLayerAI {
             	
                 if (u2.getType().isResource) 
 				{
-                	resourceNodes++;
+                	availableResources.add(u2);
                     int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
                     
                     // Check if the current resource is the closest and store it.
@@ -576,48 +577,8 @@ public class MirageAI extends AbstractionLayerAI {
 	                 }
 		        }
             }
-            
-            else
-            {
-            	if (closestResource != null && closestBase != null) 
-                {
-            		for (Unit u2 : pgs.getUnits()) 
-        			{
-                    	
-                        if (u2.getType().isResource) 
-        				{
-                            int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-                            
-                            // Check if the current resource is the closest and store it.
-                            if (closestResource == null || d < closestDistance) 
-        					{
-                                closestResource = u2;
-                                closestDistance = d;
-                            }
-                           
-                        }
-	                    AbstractAction aa = getAbstractAction(u);
-	                    if (aa instanceof Harvest) 
-	                    {
-	                        Harvest h_aa = (Harvest) aa;
-	
-	                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
-	                        {
-	                            harvest(u, closestResource, closestBase);
-	                        }
-	                    } 
-	                    
-	                    else 
-	                    {
-	                        harvest(u, closestResource, closestBase);
-	                    }
-        			}
-                }
-            	
-            }
-            
-		}
-    }
+		} // End of Free Workers Action loop      
+	} // End of Function
 
     public void rushBaseBehavior(Unit u, Player p, PhysicalGameState pgs) 
 	{
@@ -631,10 +592,12 @@ public class MirageAI extends AbstractionLayerAI {
 	{
         int nbases = 0;
         int nworkers = 0;
+        int nresourcenodes = 0;
         resourcesUsed = 0;
 
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
+        List<Unit> availableResources = new LinkedList<Unit>();
 
         for (Unit u2 : pgs.getUnits()) 
 		{
@@ -647,6 +610,12 @@ public class MirageAI extends AbstractionLayerAI {
 			{
                 nworkers++;
             }
+			
+			if (u2.getType().isResource) 
+			{
+                nresourcenodes++;
+            }
+			
         }
 
         if (p.getResources() == 0) 
@@ -654,9 +623,9 @@ public class MirageAI extends AbstractionLayerAI {
             battleWorkers.addAll(workers);
         } 
 		
-		else if (workers.size() > (nbases)) 
+		else if (workers.size() > (nbases + (nresourcenodes/2))) 
 		{
-            for (int n = 0; n < (nbases); n++) 
+            for (int n = 0; n < (nbases + (nresourcenodes/2)); n++) 
 			{
                 freeWorkers.add(workers.get(0));
                 workers.remove(0);
@@ -745,8 +714,40 @@ public class MirageAI extends AbstractionLayerAI {
                     harvest(u, closestResource, closestBase);
                 }
             }
-        }
-    }
+            
+            else
+            {
+            	if (availableResources != null && closestBase != null) 
+                {
+            		for (Unit resource : availableResources) 
+        			{
+            			int resourceCounter = 0;
+	                    AbstractAction aa = getAbstractAction(u);
+	                    if (aa instanceof Harvest) 
+	                    {
+	                        Harvest h_aa = (Harvest) aa;
+	
+	                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
+	                        {
+	                            harvest(u, availableResources.get(resourceCounter), closestBase);
+	                            resourceCounter++;
+	                            availableResources.remove(resource);
+	                        }
+	                    } 
+	                    
+	                    
+	                    else 
+	                    {
+	                        harvest(u, availableResources.get(resourceCounter), closestBase);
+	                        resourceCounter++;
+	                        availableResources.remove(resource);
+	                    }
+        			}
+                }
+            }
+            
+        } // End of free workers loop
+    } // End of function
 
     public void rangedTactic(Unit u, Unit target, Unit home, Unit enemyBase, UnitTypeTable utt, Player p) 
     {
