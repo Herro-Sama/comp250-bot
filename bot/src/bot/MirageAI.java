@@ -157,7 +157,7 @@ public class MirageAI extends AbstractionLayerAI {
 
 	/*
 
-	This is where the bases choose evaluate their moves and begin carrying out their actions.
+	This is where the bases choose evaluate their moves and begins carrying out their actions.
 
 	*/
 
@@ -399,6 +399,7 @@ public class MirageAI extends AbstractionLayerAI {
         int nbarracks = 0;
         int nworkers = 0;
         resourcesUsed = 0;
+        int resourceNodes = 0;
 
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
@@ -461,7 +462,6 @@ public class MirageAI extends AbstractionLayerAI {
 		{
             //The problem with this right now is that we can only track when a build command is sent
             //Not when it actually starts building the building.
-            int resources = p.getResources();
             Unit u = freeWorkers.remove(0);
             buildIfNotAlreadyBuilding(u, barracksType, u.getX(), u.getY(), reservedPositions, p, pgs);
             resourcesUsed += barracksType.cost;
@@ -492,22 +492,30 @@ public class MirageAI extends AbstractionLayerAI {
             Unit closestEnemyBase = null;
             int closestDistance = 0;
 
+            // Go through all units to find resources.
             for (Unit u2 : pgs.getUnits()) 
 			{
+            	
                 if (u2.getType().isResource) 
 				{
+                	resourceNodes++;
                     int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
-
+                    
+                    // Check if the current resource is the closest and store it.
                     if (closestResource == null || d < closestDistance) 
 					{
                         closestResource = u2;
                         closestDistance = d;
                     }
+                   
                 }
+                
+                // Go through all units and get the closest enemy base.
                 if (u2.getType() == baseType && u2.getPlayer() != p.getID()) 
 				{
                     int d = Math.abs(u2.getX() - u.getX()) + Math.abs(u2.getY() - u.getY());
 
+                    // If this is the closest enemy base then store its location.
                     if (closestEnemyBase == null || d < closestDistance) 
 					{
                         closestEnemyBase = u2;
@@ -516,10 +524,13 @@ public class MirageAI extends AbstractionLayerAI {
                 }
             }
             
+            // Reset the closest distance for the next pass.
 			closestDistance = 0;
 
+			// Get the nearest friendly base and and make note of it's location.
             for (Unit u2 : pgs.getUnits()) 
 			{
+            	
                 if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
 				{
                     
@@ -533,57 +544,13 @@ public class MirageAI extends AbstractionLayerAI {
                 }
             }
 		            
-            
-            if (closestResource == null || distance(closestResource, closestEnemyBase) < distance(closestResource, closestBase)) 
-					{
-		                if (pgs.getWidth() * pgs.getHeight() == 72)
-						{
-							
-							if (closestResource != null && closestBase != null) 
-							{
-								AbstractAction aa = getAbstractAction(u);
-		
-								if (aa instanceof Harvest) 
-								{
-									Harvest h_aa = (Harvest) aa;
-		
-									if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
-									{
-										harvest(u, closestResource, closestBase);
-									}
-								} 
-							
-								else 
-								{
-									harvest(u, closestResource, closestBase);
-								}
-		
-							}
-						}
-					
-						else 
-						{
-			                if (closestResource != null && closestBase != null) 
-							{
-			                    AbstractAction aa = getAbstractAction(u);
-			                    
-			                    if (aa instanceof Harvest) 
-								{
-			                        Harvest h_aa = (Harvest) aa;
-			
-			                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
-									{
-			                            harvest(u, closestResource, closestBase);
-			                        }
-								} 
-							
-							else 
-							{
-		                        harvest(u, closestResource, closestBase);
-		                    }
-		                }
-		            }
+            if (resourceNodes < 8)
+            {
+		        if (closestResource == null || distance(closestResource, closestEnemyBase) < distance(closestResource, closestBase)) 
+				{
+		        	//Do Nothing
 				}
+            }
 		}
     }
 
