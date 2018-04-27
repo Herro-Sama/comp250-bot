@@ -653,15 +653,17 @@ public class MirageAI extends AbstractionLayerAI {
             freeWorkers.addAll(workers);
         }
 
+        // If there are no more workers end function.
         if (workers.isEmpty()) 
 		{
             return;
         }
 
+        // Create a list of positions being used for building.
         List<Integer> reservedPositions = new LinkedList<Integer>();
         if (nbases == 0 && !freeWorkers.isEmpty()) 
 		{
-            // build a base:
+            // If we can afford a base, then build a base if it's not already building.
             if (p.getResources() >= baseType.cost) 
 			{
                 Unit u = freeWorkers.remove(0);
@@ -669,6 +671,7 @@ public class MirageAI extends AbstractionLayerAI {
             }
         }
 
+        // Set battle workers behaviours.
         for (Unit u : battleWorkers) 
 		{
             meleeUnitBehavior(u, p, gs);
@@ -694,7 +697,11 @@ public class MirageAI extends AbstractionLayerAI {
                     }
                 }
             }
+            
+            // Reset closest distance.
             closestDistance = 0;
+            
+            
             for (Unit u2 : pgs.getUnits()) 
 			{
                 if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
