@@ -158,9 +158,7 @@ public class MirageAI extends AbstractionLayerAI {
     }
 
 	/*
-
-	This is where the bases choose evaluate their moves and begins carrying out their actions.
-
+	* This is where the bases choose evaluate their moves and begins carrying out their actions.
 	*/
 
     public void baseBehavior(Unit u, Player p, PhysicalGameState pgs, GameState gs) {
@@ -217,9 +215,7 @@ public class MirageAI extends AbstractionLayerAI {
     }
 
 	/*
-
-	This is the barracks behaviour which is to check if they can afford rangedUnits and build them.
-
+	* This is the barracks behaviour which is to check if they can afford rangedUnits and build them.
 	*/
     public void barracksBehavior(Unit u, Player p, PhysicalGameState pgs) 
 	{
@@ -233,9 +229,7 @@ public class MirageAI extends AbstractionLayerAI {
 
 
 	/*
-
-	This script is for handling any melee units, and workers not currently harvesting.
-
+	* This script is for handling any melee units, and workers not currently harvesting.
 	*/
     public void meleeUnitBehavior(Unit u, Player p, GameState gs) 
 	{
@@ -297,6 +291,7 @@ public class MirageAI extends AbstractionLayerAI {
             }
         }
 
+        // If there is a closest Enemy attack them.
         if (closestEnemy != null) 
 		{
 			// If the enemy has no units and the time is less than 400 attack.
@@ -314,9 +309,7 @@ public class MirageAI extends AbstractionLayerAI {
     }
 
 	/*
-
-	This is ranged unit behaviours which will control any bot controlled ranged units.
-
+	* This is ranged unit behaviours which will control any bot controlled ranged units.
 	*/
     public void rangedUnitBehavior(Unit u, Player p, GameState gs) 
 	{
@@ -388,6 +381,7 @@ public class MirageAI extends AbstractionLayerAI {
             }
         }
         
+        // Get if there is a closest enemy, then run ranged tactics.
         if (closestEnemy != null) 
         {
         	// If closest enemy isn't null begin running ranged tactics to resolve actions.
@@ -396,6 +390,10 @@ public class MirageAI extends AbstractionLayerAI {
         }
     }
 
+    
+    /*
+    *  These are the worker behaviours which are called when the bot is not set to be rushing.
+    */
     public void workersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) {
         int nbases = 0;
         int nbarracks = 0;
@@ -439,7 +437,7 @@ public class MirageAI extends AbstractionLayerAI {
             battleWorkers.addAll(workers);
         } 
         
-		// If there aren't enough workers assign all available workers to freeworkers.
+		// If there aren't enough workers assign all available workers to free workers.
         else 
         {
             freeWorkers.addAll(workers);
@@ -450,10 +448,13 @@ public class MirageAI extends AbstractionLayerAI {
             return;
         }
 
+        // Make a list of places where things are being built, so you don't build in that location.
         List<Integer> reservedPositions = new LinkedList<Integer>();
+        
+        // If there aren't any bases and there are workers build a base.
         if (nbases == 0 && !freeWorkers.isEmpty()) 
 		{
-            // build a base:
+            // Check if we can build a base then build it if no base is already being made.
             if (p.getResources() >= baseType.cost) 
 			{
                 Unit u = freeWorkers.remove(0);
@@ -461,6 +462,7 @@ public class MirageAI extends AbstractionLayerAI {
             }
         }
         
+        // Check if the there are workers available and if there are resources to build a barracks.
 		if ((nbarracks == 0) && (!freeWorkers.isEmpty()) && nworkers > 1 && p.getResources() >= barracksType.cost) 
 		{
             //The problem with this right now is that we can only track when a build command is sent
@@ -472,11 +474,13 @@ public class MirageAI extends AbstractionLayerAI {
 
         } 
 		
+		// Set the resources used to be 
 		else 
 		{
             resourcesUsed = barracksType.cost * nbarracks;
         }
 
+		//
         if (nbarracks > 1) 
 		{
             buildingRacks = true;
@@ -580,6 +584,10 @@ public class MirageAI extends AbstractionLayerAI {
 		} // End of Free Workers Action loop      
 	} // End of Function
 
+    /*
+     * This is the behaviour that the base should have if it's a rush sized map.
+     */
+    
     public void rushBaseBehavior(Unit u, Player p, PhysicalGameState pgs) 
 	{
         if (p.getResources() >= workerType.cost) 
@@ -588,6 +596,9 @@ public class MirageAI extends AbstractionLayerAI {
         }
     }
 
+    /*
+    * This is the behaviours for the workers when they are flagged as rushing.
+    */
     public void rushWorkersBehavior(List<Unit> workers, Player p, PhysicalGameState pgs, GameState gs) 
 	{
         int nbases = 0;
@@ -599,6 +610,8 @@ public class MirageAI extends AbstractionLayerAI {
         List<Unit> battleWorkers = new LinkedList<Unit>();
         List<Unit> availableResources = new LinkedList<Unit>();
 
+        
+        // Pass through all the units tracking the number of resources, bases and workers owned by the player.
         for (Unit u2 : pgs.getUnits()) 
 		{
             if (u2.getType() == baseType && u2.getPlayer() == p.getID()) 
@@ -618,14 +631,16 @@ public class MirageAI extends AbstractionLayerAI {
 			
         }
 
-        if (p.getResources() == 0) 
+        // This checks if resources are being gathered and setting any workers not working into the battleWorkers group.
+        if (p.getResources() > (nresourcenodes/2)) 
 		{
             battleWorkers.addAll(workers);
         } 
 		
-		else if (workers.size() > (nbases + (nresourcenodes/2))) 
+        
+		else if (workers.size() > ((nresourcenodes/2))) 
 		{
-            for (int n = 0; n < (nbases + (nresourcenodes/2)); n++) 
+            for (int n = 0; n < ((nresourcenodes/2)); n++) 
 			{
                 freeWorkers.add(workers.get(0));
                 workers.remove(0);
@@ -659,7 +674,7 @@ public class MirageAI extends AbstractionLayerAI {
             meleeUnitBehavior(u, p, gs);
         }
 
-        // harvest with all the free workers:
+        // Assign actions to all the free workers:
         for (Unit u : freeWorkers) 
 		{
             Unit closestBase = null;
@@ -729,16 +744,15 @@ public class MirageAI extends AbstractionLayerAI {
 	
 	                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
 	                        {
-	                            harvest(u, availableResources.get(resourceCounter), closestBase);
+	                            harvest(u, availableResources.get((resourceCounter/2)), closestBase);
 	                            resourceCounter++;
 	                            availableResources.remove(resource);
 	                        }
 	                    } 
 	                    
-	                    
 	                    else 
 	                    {
-	                        harvest(u, availableResources.get(resourceCounter), closestBase);
+	                        harvest(u, availableResources.get((resourceCounter/2)), closestBase);
 	                        resourceCounter++;
 	                        availableResources.remove(resource);
 	                    }
@@ -747,8 +761,9 @@ public class MirageAI extends AbstractionLayerAI {
             }
             
         } // End of free workers loop
-    } // End of function
-
+    } // End of function    
+    
+    // Shorthand function for using the CRanged_Tactic folder.
     public void rangedTactic(Unit u, Unit target, Unit home, Unit enemyBase, UnitTypeTable utt, Player p) 
     {
         actions.put(u, new CRanged_Tactic(u, target, home, enemyBase, pf, utt, p));
