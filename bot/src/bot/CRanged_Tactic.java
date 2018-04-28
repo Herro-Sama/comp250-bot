@@ -39,6 +39,10 @@ public class CRanged_Tactic extends AbstractAction {
     UnitTypeTable utt;
     Player p;
 
+    
+    /*
+    * This is the function which sets all the global variables used to perform other functions in this file.
+    */
     public CRanged_Tactic(Unit u, Unit a_target, Unit h, Unit eb, PathFinding a_pf, UnitTypeTable ut, Player pl) 
     {
         super(u);
@@ -57,6 +61,10 @@ public class CRanged_Tactic extends AbstractAction {
         enemyBase = eb;
     }
 
+    
+    /*
+     *  Check to see if the unit has destroyed it's target.
+     */ 
     public boolean completed(GameState gs) 
     {
         PhysicalGameState pgs = gs.getPhysicalGameState();
@@ -68,6 +76,9 @@ public class CRanged_Tactic extends AbstractAction {
         return false;
     }
 
+    /*
+     * No idea what this does...
+     */
     public boolean equals(Object o) 
     {
         
@@ -91,12 +102,18 @@ public class CRanged_Tactic extends AbstractAction {
         return true;
     }
 
+    
+    
     public void toxml(XMLWriter w) 
     {
         w.tagWithAttributes("Attack", "unitID=\"" + getUnit().getID() + "\" target=\"" + target.getID() + "\" pathfinding=\"" + pf.getClass().getSimpleName() + "\"");
         w.tag("/Attack");
     }
 
+    
+    /*
+     * This is where actions are decided and targets are set.
+     */
     public UnitAction execute(GameState gs, ResourceUsage ru) 
     {
         PhysicalGameState pgs = gs.getPhysicalGameState();
@@ -105,11 +122,13 @@ public class CRanged_Tactic extends AbstractAction {
 
         boolean timeToAttack = false;
 
+        // If there is no home set make this unit home.
         if (home == null) 
         {
             home = unit;
         }
 
+        // If there is no enemy base set it to be the target.
         if (enemyBase == null) 
         {
             enemyBase = target;
@@ -118,6 +137,7 @@ public class CRanged_Tactic extends AbstractAction {
         //Determining distances
         double rd = 0.0;
 
+        // If we have a home keep track of the distance.
         if (home != null) 
         {
             rd = distance(unit, home);
@@ -131,13 +151,15 @@ public class CRanged_Tactic extends AbstractAction {
         int nEnemyBases = 0;
         int enemyAttackUnits = 0;
         int enemyWorkers = 0;
-        int cutoffTime = 5000;
+        int cutoffTime = 1800;
 
+        // If the size of the map is this big set the cut off time to very large.
         if ((pgs.getWidth() * pgs.getHeight()) > 3000) 
         {
             cutoffTime = 15000;
         }
 
+        // Pass through all the game units and if they are an enemy add them to an int for their particular type.
         for (Unit u2 : gameUnites) 
         {
             if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == baseType) 
@@ -158,11 +180,12 @@ public class CRanged_Tactic extends AbstractAction {
         }
 
         //Determining if its time to attack
-        if ((enemyWorkers < (2 * nEnemyBases) || nEnemyBases == 0) && enemyAttackUnits == 0 || gs.getTime() > 2000) 
+        if ((enemyWorkers < (2 * nEnemyBases) || nEnemyBases == 0) && enemyAttackUnits == 0) 
         {
             timeToAttack = true;
         }
 
+        // If the cut off time is less than than current time attack.
         if (gs.getTime() > cutoffTime) 
         {
             timeToAttack = true;
@@ -220,19 +243,10 @@ public class CRanged_Tactic extends AbstractAction {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 if(move == null)
                 {
-                	for (int baseXOffset = -1; baseXOffset < 2; baseXOffset++)
+                	if (rd < 2)
                 	{
-                		for (int baseYOffset = -1; baseYOffset < 2; baseYOffset++)
-                    	{
-                    		if (unit.getX() == (home.getX()+baseXOffset) || unit.getY() == (home.getY()+baseYOffset))
-                    		{
-                    			move = pf.findPathToPositionInRange(unit, (home.getX() + baseXOffset * 2) + (home.getY() + baseYOffset * 2) * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
-                    			break;
-                    		}
-                    	}
+                		// Move away CODE GOES HERE
                 	}
-                	
-                	
                 }
             }
             
