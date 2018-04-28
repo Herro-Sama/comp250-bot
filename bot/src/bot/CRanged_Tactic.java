@@ -151,7 +151,7 @@ public class CRanged_Tactic extends AbstractAction {
         int nEnemyBases = 0;
         int enemyAttackUnits = 0;
         int enemyWorkers = 0;
-        int cutoffTime = 1800;
+        int cutoffTime = 3000;
 
         // If the size of the map is this big set the cut off time to very large.
         if ((pgs.getWidth() * pgs.getHeight()) > 3000) 
