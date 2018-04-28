@@ -552,8 +552,10 @@ public class MirageAI extends AbstractionLayerAI {
                 }
             }
 		            
+            // Use the number of resource Nodes to work out if this is no where to run.
             if (resourceNodes < 8)
             {
+            	// Perform the usual harvesting check to see if you should harvest something.
 		        if (closestResource == null || distance(closestResource, closestEnemyBase) < distance(closestResource, closestBase)) 
 				{
 		        	//Do Nothing
@@ -561,6 +563,7 @@ public class MirageAI extends AbstractionLayerAI {
 		        
 		        else 
 		        {
+		        	// If you have a resource and a base work harvest actions.
 	                 if (closestResource != null && closestBase != null) 
 	                 {
 	                     AbstractAction aa = getAbstractAction(u);
@@ -584,10 +587,10 @@ public class MirageAI extends AbstractionLayerAI {
 		} // End of Free Workers Action loop      
 	} // End of Function
 
+    
     /*
      * This is the behaviour that the base should have if it's a rush sized map.
      */
-    
     public void rushBaseBehavior(Unit u, Player p, PhysicalGameState pgs) 
 	{
         if (p.getResources() >= workerType.cost) 
@@ -702,6 +705,7 @@ public class MirageAI extends AbstractionLayerAI {
             closestDistance = 0;
             
             
+            // Go through all units check if the unit can be used as a stock pile.
             for (Unit u2 : pgs.getUnits()) 
 			{
                 if (u2.getType().isStockpile && u2.getPlayer() == p.getID()) 
@@ -717,6 +721,7 @@ public class MirageAI extends AbstractionLayerAI {
                 }
             }
 
+            // If the closest resource and base references exist gather the resources.
             if (closestResource != null && closestBase != null) 
 			{
                 AbstractAction aa = getAbstractAction(u);
@@ -734,36 +739,6 @@ public class MirageAI extends AbstractionLayerAI {
 				else 
 				{
                     harvest(u, closestResource, closestBase);
-                }
-            }
-            
-            else
-            {
-            	if (availableResources != null && closestBase != null) 
-                {
-            		for (Unit resource : availableResources) 
-        			{
-            			int resourceCounter = 0;
-	                    AbstractAction aa = getAbstractAction(u);
-	                    if (aa instanceof Harvest) 
-	                    {
-	                        Harvest h_aa = (Harvest) aa;
-	
-	                        if (h_aa.getTarget() != closestResource || h_aa.getBase() != closestBase) 
-	                        {
-	                            harvest(u, availableResources.get((resourceCounter/2)), closestBase);
-	                            resourceCounter++;
-	                            availableResources.remove(resource);
-	                        }
-	                    } 
-	                    
-	                    else 
-	                    {
-	                        harvest(u, availableResources.get((resourceCounter/2)), closestBase);
-	                        resourceCounter++;
-	                        availableResources.remove(resource);
-	                    }
-        			}
                 }
             }
             
