@@ -295,7 +295,7 @@ public class MirageAI extends AbstractionLayerAI {
         if (closestEnemy != null) 
 		{
 			// If the enemy has no units and the time is less than 400 attack.
-            if (gs.getTime() < 400 || isRush) 
+            if (gs.getTime() < 400 || isRush && pgs.getWidth() * pgs.getHeight() != 72) 
 			{
                 attack(u, closestEnemy);
             }
@@ -611,7 +611,6 @@ public class MirageAI extends AbstractionLayerAI {
 
         List<Unit> freeWorkers = new LinkedList<Unit>();
         List<Unit> battleWorkers = new LinkedList<Unit>();
-        List<Unit> availableResources = new LinkedList<Unit>();
 
         
         // Pass through all the units tracking the number of resources, bases and workers owned by the player.
@@ -634,23 +633,25 @@ public class MirageAI extends AbstractionLayerAI {
 			
         }
 
-        // This checks if resources are being gathered and setting any workers not working into the battleWorkers group.
+        // This checks if the player has more resources than half of the available nodes sets all workers into the battleWorkers group.
         if (p.getResources() > (nresourcenodes/2)) 
 		{
             battleWorkers.addAll(workers);
         } 
 		
-        
-		else if (workers.size() > ((nresourcenodes/2))) 
+        // If we have more workers than half the number of resources then set some of them to harvest and everyone else should be a battle worker.
+		else if (workers.size() > nresourcenodes/2) 
 		{
-            for (int n = 0; n < ((nresourcenodes/2)); n++) 
+            for (int n = 0; n < nresourcenodes/2; n++) 
 			{
                 freeWorkers.add(workers.get(0));
                 workers.remove(0);
             }
             battleWorkers.addAll(workers);
         } 
-		
+        
+        
+		// Else add all of them to free workers.
 		else 
 		{
             freeWorkers.addAll(workers);

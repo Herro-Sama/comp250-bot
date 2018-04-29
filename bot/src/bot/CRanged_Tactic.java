@@ -135,15 +135,15 @@ public class CRanged_Tactic extends AbstractAction {
         }
 
         //Determining distances
-        double rd = 0.0;
+        double homeDistance = 0.0;
 
         // If we have a home keep track of the distance.
         if (home != null) 
         {
-            rd = distance(unit, home);
+            homeDistance = distance(unit, home);
         }
 
-        double d = distance(unit, target);
+        double distance = distance(unit, target);
 
         //Counting enemy units
         List<Unit> gameUnites = pgs.getUnits();
@@ -151,7 +151,7 @@ public class CRanged_Tactic extends AbstractAction {
         int nEnemyBases = 0;
         int enemyAttackUnits = 0;
         int enemyWorkers = 0;
-        int cutoffTime = 3000;
+        int cutoffTime = 4500;
 
         // If the size of the map is this big set the cut off time to very large.
         if ((pgs.getWidth() * pgs.getHeight()) > 3000) 
@@ -160,26 +160,26 @@ public class CRanged_Tactic extends AbstractAction {
         }
 
         // Pass through all the game units and if they are an enemy add them to an int for their particular type.
-        for (Unit u2 : gameUnites) 
+        for (Unit otherUnit : gameUnites) 
         {
-            if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == baseType) 
+            if (otherUnit != null && otherUnit.getPlayer() != p.getID() && otherUnit.getType() == baseType) 
             {
                 nEnemyBases++;
             }
 
-            if (u2 != null && u2.getPlayer() != p.getID()
-                    && (u2.getType() == rangedType || u2.getType() == heavyType || u2.getType() == lightType)) 
+            if (otherUnit != null && otherUnit.getPlayer() != p.getID()
+                    && (otherUnit.getType() == rangedType || otherUnit.getType() == heavyType || otherUnit.getType() == lightType)) 
             {
                 enemyAttackUnits++;
             }
 
-            if (u2 != null && u2.getPlayer() != p.getID() && u2.getType() == workerType) 
+            if (otherUnit != null && otherUnit.getPlayer() != p.getID() && otherUnit.getType() == workerType) 
             {
                 enemyWorkers++;
             }
         }
 
-        //Determining if its time to attack
+        // Determining if its time to attack and set the attack flag to go.
         if ((enemyWorkers < (2 * nEnemyBases) || nEnemyBases == 0) && enemyAttackUnits == 0) 
         {
             timeToAttack = true;
@@ -191,33 +191,41 @@ public class CRanged_Tactic extends AbstractAction {
             timeToAttack = true;
         }
 
-        //Finding ranged ally and distance from ally to target
+        // Finding ranged ally and distance from ally to target
         Unit ally = nearestRangedAlly(enemyBase, gameUnites, gs);
 
-        double ad = 0.0;
+        double allyDistance = 0.0;
 
+        // if there is an ally set the distance to them.
         if (ally != null) 
         {
-            ad = distance(ally, target);
+            allyDistance = distance(ally, target);
         }
 
         //Action for workers
         if (unit.getType() == workerType) 
         {
+        	// Set their move to null.
             UnitAction move = null;
             
-            if (d <= unit.getAttackRange()) 
+            // If the distance from the Unit to their target is less than their range attack their target.
+            if (distance <= unit.getAttackRange()) 
             {
                 return new UnitAction(UnitAction.TYPE_ATTACK_LOCATION, target.getX(), target.getY());
             } 
+            
+            // If it's time to attack move to the enemy and attack them.
             else if (timeToAttack) 
             {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
             } 
+            
+            // If you have an ally nearby perform these checks.
             else if (ally != null) 
             {
 
-                if (d > ad) 
+                // If the target is closer than your ally, move towards your target otherwise move to your ally.
+            	if (distance > allyDistance) 
                 {
                     move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 } 
@@ -226,11 +234,13 @@ public class CRanged_Tactic extends AbstractAction {
                     move = pf.findPathToPositionInRange(unit, ally.getX() + ally.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 }
                 
+            	// If you can't perform that action move to your ally, -1.
                 if (move == null) 
                 {
                     move = pf.findPathToPositionInRange(unit, (ally.getX() - 1) + (ally.getY()) * gs.getPhysicalGameState().getWidth(), unit.getAttackRange() + 1, gs, ru);
                 }
                 
+                // If that doesn't work move towards your enemy.
                 if (move == null) 
                 {
                     move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
@@ -238,21 +248,28 @@ public class CRanged_Tactic extends AbstractAction {
                 
             } 
             
+            // If you have no ally then you should move to the target and if you don't have that just move away from the home base.
             else 
             {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 if(move == null)
                 {
-                	if (rd < 2)
+                	if (homeDistance < 5 && p.getID() == 1)
                 	{
-                		// Move away CODE GOES HERE
+                		move = pf.findPathToPositionInRange(unit, home.getX() + (home.getY() - 2) * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
+                	}
+                	
+                	else if (homeDistance < 5)
+                	{
+                		move = pf.findPathToPositionInRange(unit, home.getX() + (home.getY() + 2) * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
                 	}
                 }
             }
             
             
 
-            if (move != null && gs.isUnitActionAllowed(unit, move)) 
+            // If the suggested move is possible return the move.
+            if (move != null && gs.isUnitActionAllowed(unit, move))
             {
                 return move;
             }
@@ -260,7 +277,7 @@ public class CRanged_Tactic extends AbstractAction {
         }
 
         //Action for ranged units
-        if (d <= unit.getAttackRange()) 
+        if (distance <= unit.getAttackRange()) 
         {
             return new UnitAction(UnitAction.TYPE_ATTACK_LOCATION, target.getX(), target.getY());
         } 
@@ -275,7 +292,7 @@ public class CRanged_Tactic extends AbstractAction {
                 move = pf.findPathToPositionInRange(unit, target.getX() + target.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
             } 
             
-            else if (rd < 5 || (distance(unit, enemyBase) > distance(home, enemyBase))) 
+            else if (homeDistance < 5 || (distance(unit, enemyBase) > distance(home, enemyBase))) 
             {
                 move = pf.findPathToPositionInRange(unit, enemyBase.getX() + enemyBase.getY() * gs.getPhysicalGameState().getWidth(), unit.getAttackRange(), gs, ru);
             }
@@ -292,7 +309,7 @@ public class CRanged_Tactic extends AbstractAction {
         {
 
             //Attack behavior
-            if (d <= (unit.getAttackRange()) - 1 && rd > 2 && unit.getMoveTime() < target.getMoveTime()) 
+            if (distance <= (unit.getAttackRange()) - 1 && homeDistance > 2 && unit.getMoveTime() < target.getMoveTime()) 
             
             {
                 UnitAction move = pf.findPathToPositionInRange(unit, home.getX() + home.getY() * gs.getPhysicalGameState().getWidth(), getUnit().getAttackRange(), gs, ru);
@@ -304,7 +321,7 @@ public class CRanged_Tactic extends AbstractAction {
                 
             } 
             
-            else if (d <= unit.getAttackRange()) 
+            else if (distance <= unit.getAttackRange()) 
             {
                 return new UnitAction(UnitAction.TYPE_ATTACK_LOCATION, target.getX(), target.getY());
             } 
@@ -320,7 +337,7 @@ public class CRanged_Tactic extends AbstractAction {
                 return null;
             }
 
-        } //Behavior for ranged units to move into a position next to the leading ranged unit (ally)
+        } // Behavior for ranged units to move into a position next to the leading ranged unit (ally)
         else 
         {
 
@@ -496,20 +513,20 @@ public class CRanged_Tactic extends AbstractAction {
         Unit farthestUnit = null;
         double farthestDistance = 0;
 
-        for (Unit u2 : unites) 
+        for (Unit otherUnit : unites) 
         {
-            if (u2.getType() == rangedType
-                    && u2.getPlayer() == p.getID() && home != null) 
+            if (otherUnit.getType() == rangedType
+                    && otherUnit.getPlayer() == p.getID() && home != null) 
             {
 
-                int dx = start.getX() - u2.getX();
-                int dy = start.getY() - u2.getY();
-                double d = Math.sqrt(dx * dx + dy * dy);
+                int dx = start.getX() - otherUnit.getX();
+                int dy = start.getY() - otherUnit.getY();
+                double distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (d > farthestDistance) 
+                if (distance > farthestDistance) 
                 {
-                    farthestDistance = d;
-                    farthestUnit = u2;
+                    farthestDistance = distance;
+                    farthestUnit = otherUnit;
                 }
             }
 
@@ -527,19 +544,19 @@ public class CRanged_Tactic extends AbstractAction {
 
         if (start != null) 
         {
-            for (Unit u2 : unites) 
+            for (Unit otherUnit : unites) 
             {
-                if (u2 != null && u2.getPlayer() == p.getID() && u2.getType() == rangedType) 
+                if (otherUnit != null && otherUnit.getPlayer() == p.getID() && otherUnit.getType() == rangedType) 
                 {
 
-                    int dx = start.getX() - u2.getX();
-                    int dy = start.getY() - u2.getY();
-                    double d = Math.sqrt(dx * dx + dy * dy);
+                    int dx = start.getX() - otherUnit.getX();
+                    int dy = start.getY() - otherUnit.getY();
+                    double distance = Math.sqrt(dx * dx + dy * dy);
 
-                    if (d < nearestDistance || nearestDistance == -1) 
+                    if (distance < nearestDistance || nearestDistance == -1) 
                     {
-                        nearestDistance = d;
-                        nearestUnit = u2;
+                        nearestDistance = distance;
+                        nearestUnit = otherUnit;
                     }
                 }
             }
